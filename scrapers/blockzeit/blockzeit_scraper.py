@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 22 15:11:59 2024
+Created on Wed Mar  6 17:02:24 2024
 
 @author: UgoGard
 """
@@ -19,24 +19,29 @@ logging.basicConfig(level=logging.DEBUG,
                         ])
 
 
-def fetch_urls():
+def fetch_urls(headers):
     '''
     The purpose of the extract_article_data function is to extract the title,
     date and text from an article.
 
+    Parameters
+    ----------
+    headers : dict
+        DESCRIPTION.
+
     Returns
     -------
-    complete_urls : string
+    list
         DESCRIPTION.
 
     '''
     
     logging.info("Starting fetch_urls")
-    base_url = "https://cryptonews.com/news/bitcoin-news"
+    base_url = 'https://www.blockzeit.com/category/bitcoin-news'
     complete_urls = []
     page = 1
 
-    while True:
+    while True and page<62:
         logging.debug(f"Fetching page: {page}")
         if page == 1:
             url = base_url + "/"
@@ -44,19 +49,14 @@ def fetch_urls():
             url = f"{base_url}/page/{page}/"
         
         # Fetch the content from the URL
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         webpage_content = response.text
 
         # Parse the HTML content
         soup = BeautifulSoup(webpage_content, 'html.parser')
 
         # Find all <div> elements with the class 'news-one-title'
-        news_titles = soup.find_all('div', class_='news-one-title')
-
-        # Check if the page has news titles
-        if not news_titles:
-            logging.info("Finished fetching urls")
-            break  # Break the loop if no news titles found, indicating the end of the pages
+        news_titles = soup.find_all('h3', class_="jeg_post_title")
 
         # Extract the href and text for each <a> tag within each found <div>
         for title in news_titles:
@@ -67,10 +67,12 @@ def fetch_urls():
         
         page += 1  # Go to the next page
     
+    logging.info("Finished fetching urls")
+    
     return complete_urls
 
 
-def extract_article_data(url):
+def extract_article_data(url, headers):
     '''
     The purpose of the extract_article_data function is to extract the title,
     date and text from an article.
@@ -78,6 +80,9 @@ def extract_article_data(url):
     Parameters
     ----------
     url : string
+        DESCRIPTION.
+    
+    headers : dict
         DESCRIPTION.
 
     Returns
@@ -88,42 +93,45 @@ def extract_article_data(url):
     '''
     
     logging.debug(f"Extracting article: {url}")
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
     webpage_content = response.text
     soup = BeautifulSoup(webpage_content, 'html.parser')
 
     # Extract the title
-    title_tag = soup.find('h1', class_='mb-10')
+    title_tag = soup.find('h1', class_='jeg_post_title')
     title = title_tag.text.strip() if title_tag else 'Title not found'
 
-    # Extract the date    
-    date_tag = soup.find('meta', {'property': 'article:published_time'})
+    # Extract the date
+    date_tag = soup.find('meta', {'property':'article:published_time'})
     date = date_tag['content'] if date_tag else 'Date not found'
 
     # Extracting the article text
-    article_content_tag = soup.find('div', class_='article-single__content category_contents_details')
+    article_content_tag = soup.find('div', class_='content-inner')
     text = ' '.join([p.text for p in article_content_tag.find_all('p')]) if article_content_tag else 'Content not found'
-
+    
     logging.debug(f"Finished extracting article: {url}")
 
     return [date, title, url, text]
 
 
+# Define headers to mimic a browser request
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+
 # Fetch urls from all available pages
-urls = fetch_urls()
-#urls = ['https://cryptonews.com/news/bitcoin-and-ethereum-on-their-way-to-mass-market-1649.htm']
+urls = fetch_urls(headers)
+#urls = ['https://www.blockzeit.com/is-dogecoin-ever-going-to-beat-its-ath/', 'https://blockzeit.com/bitcoin-crashes-14-percent-in-less-than-an-hour/']
 
 data = []
 
 for url in urls:
-    article_data = extract_article_data(url)
+    article_data = extract_article_data(url, headers)
     data.append(article_data)
 
 # Create a dataframe to store the news articles data
-cryptonews_df = pd.DataFrame(data, columns=['date', 'title', 'url', 'text'])
+blockzeit_df = pd.DataFrame(data, columns=['date', 'title', 'url', 'text'])
 
 # Convert date to a datetime object and set date as index
-cryptonews_df['date'] = pd.to_datetime(cryptonews_df['date'], errors='coerce', utc=True)
+blockzeit_df['date'] = pd.to_datetime(blockzeit_df['date'], errors='coerce', utc=True)
 
 # Export dataframe to csv
-cryptonews_df.to_csv('cryptonews_data.csv', index=False)
+blockzeit_df.to_csv('blockzeit_data.csv', index=False)
