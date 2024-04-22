@@ -125,10 +125,7 @@ for url in urls:
 cryptonews_df = pd.DataFrame(data, columns=['date', 'title', 'url', 'text'])
 
 # Convert date to a datetime object and set date as index
-# Removing 'UTC' as strptime does not parse timezone names
-#cryptonews_df['date'] = cryptonews_df['date'].replace(" UTC", "")
 cryptonews_df['date'] = pd.to_datetime(cryptonews_df['date'], errors='coerce', utc=True)
-#cryptonews_df = cryptonews_df.set_index(cryptonews_df['date'])
 
 # Export dataframe to csv
-cryptonews_df.to_csv('cryptonews_data.csv')
+cryptonews_df.to_csv('cryptonews_data.csv', index=False)
